@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>우가우가! 돌망치 대모험</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Gamja+Flower&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            background-color: #0f172a;
+        }
+        .btn-bounce:hover {
+            transform: scale(1.05);
+        }
+        .btn-bounce:active {
+            transform: scale(0.95);
+        }
+        .game-card {
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.7), 0 8px 12px -6px rgba(0, 0, 0, 0.5);
+        }
+        canvas {
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-2 sm:p-4 text-white overflow-hidden select-none">
+
+    <!-- Game Container -->
+    <div class="relative w-full max-w-4xl bg-slate-900 rounded-3xl overflow-hidden border-4 border-amber-800 game-card aspect-[16/9] flex flex-col justify-center items-center">
+        
+        <!-- Canvas Element -->
+        <canvas id="gameCanvas" width="960" height="540" class="w-full h-full block bg-sky-200"></canvas>
+
+        <!-- Overlay: Start Main Menu -->
+        <div id="startScreen" class="absolute inset-0 bg-black/65 backdrop-blur-md flex flex-col justify-center items-center p-6 text-center z-20">
+            <div class="bg-amber-100 border-4 border-amber-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-amber-950 shadow-2xl">
+                <div class="inline-block bg-amber-600 text-white px-4 py-1 rounded-full text-sm font-bold mb-2 shadow">
+                    🍖 힐링 원시 액션 게임 🦕
+                </div>
+                <h1 class="text-4xl sm:text-5xl font-black text-amber-900 mb-4 drop-shadow tracking-wide">
+                    우가우가!<br><span class="text-amber-600 text-3xl sm:text-4xl">돌망치 대모험</span>
+                </h1>
+                
+                <div class="bg-amber-200/70 p-4 rounded-2xl mb-6 text-left text-sm sm:text-base border border-amber-400">
+                    <p class="font-bold text-amber-900 mb-2 border-b border-amber-400 pb-1">🎮 게임 조작 안내</p>
+                    <ul class="space-y-1.5 text-amber-900/90 font-medium">
+                        <li class="flex items-center gap-2"><span class="bg-amber-800 text-white px-2 py-0.5 rounded text-xs">← / →</span> 또는 <span class="bg-amber-800 text-white px-2 py-0.5 rounded text-xs">A / D</span> : 이동</li>
+                        <li class="flex items-center gap-2"><span class="bg-amber-800 text-white px-2 py-0.5 rounded text-xs">↑</span> 또는 <span class="bg-amber-800 text-white px-2 py-0.5 rounded text-xs">W</span> : 점프 (땅 위 장애물 넘기)</li>
+                        <li class="flex items-center gap-2"><span class="bg-amber-800 text-white px-2 py-0.5 rounded text-xs">Space</span> 또는 <span class="bg-amber-800 text-white px-2 py-0.5 rounded text-xs">Z</span> : 돌망치 강타! (+10점)</li>
+                        <li class="flex items-center gap-2 text-emerald-800 font-bold"><span class="bg-emerald-700 text-white px-2 py-0.5 rounded text-xs">🍎 과일</span> : 닳았던 에너지를 100% 완충!</li>
+                    </ul>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                    <button id="startBtn" class="btn-bounce w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white text-xl font-bold rounded-2xl shadow-lg border-b-4 border-green-800 transition">
+                        원시 모험 시작하기 🚀
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overlay: HUD Header -->
+        <div id="hud" class="absolute top-0 left-0 right-0 p-3 sm:p-4 flex justify-between items-start pointer-events-none z-10 hidden">
+            <!-- Left: 6 Hearts Container -->
+            <div class="flex flex-col gap-2">
+                <div class="bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/20 flex flex-col gap-1 shadow-md">
+                    <span class="text-xs text-amber-200 font-bold">에너지 (HP)</span>
+                    <div id="heartsContainer" class="flex gap-1 text-xl sm:text-2xl">
+                        <!-- 6 Hearts dynamic rendering -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Score & Sound Toggle -->
+            <div class="flex flex-col items-end gap-2">
+                <div class="bg-black/50 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20 text-right shadow-md">
+                    <div class="text-xs text-amber-300 font-bold tracking-wider">SCORE</div>
+                    <div id="scoreDisplay" class="text-2xl sm:text-3xl font-black text-amber-400 leading-none">0000</div>
+                    <div id="highScoreDisplay" class="text-xs text-slate-300 mt-1">BEST: 0</div>
+                </div>
+
+                <div class="flex gap-2 pointer-events-auto">
+                    <button id="quitBtn" class="bg-red-900/60 hover:bg-red-800/80 active:scale-95 transition backdrop-blur-md px-3 py-1.5 rounded-xl border border-red-400/30 text-xs font-bold flex items-center gap-1 text-red-200 shadow">
+                        <span>🏠</span> <span>그만하기</span>
+                    </button>
+                    <button id="muteBtn" class="bg-black/50 hover:bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 text-xs font-bold flex items-center gap-1 text-amber-200">
+                        <span id="muteIcon">🔊</span> <span id="muteText">소리 켜짐</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overlay: Game Over Screen -->
+        <div id="gameOverScreen" class="absolute inset-0 bg-black/75 backdrop-blur-md flex flex-col justify-center items-center p-6 text-center z-20 hidden">
+            <div class="bg-amber-100 border-4 border-amber-800 rounded-3xl p-6 sm:p-8 max-w-md w-full text-amber-950 shadow-2xl">
+                <div class="text-5xl mb-2">😵</div>
+                <h2 class="text-3xl sm:text-4xl font-black text-amber-900 mb-2">게임 오버!</h2>
+                <p class="text-amber-700 font-medium mb-6">주인공 원시인이 지쳤습니다!</p>
+
+                <div class="bg-amber-200/80 p-4 rounded-2xl mb-6 space-y-2 border border-amber-400">
+                    <div class="flex justify-between items-center text-amber-900 font-bold">
+                        <span>획득 점수</span>
+                        <span id="finalScore" class="text-2xl text-amber-600">0</span>
+                    </div>
+                    <div class="flex justify-between items-center text-amber-800 text-sm">
+                        <span>최고 기록</span>
+                        <span id="finalHighScore" class="font-bold">0</span>
+                    </div>
+                </div>
+
+                <button id="restartBtn" class="btn-bounce w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white text-xl font-bold rounded-2xl shadow-lg border-b-4 border-orange-800 transition">
+                    다시 모험하기 🔄
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Touch Controls -->
+        <div id="touchControls" class="absolute bottom-3 left-3 right-3 flex justify-between items-end pointer-events-none z-10 md:hidden opacity-85">
+            <div class="flex gap-2 pointer-events-auto">
+                <button id="btnLeft" class="w-14 h-14 bg-black/50 active:bg-amber-600/70 rounded-full border-2 border-white/40 text-white text-2xl flex items-center justify-center">◀</button>
+                <button id="btnRight" class="w-14 h-14 bg-black/50 active:bg-amber-600/70 rounded-full border-2 border-white/40 text-white text-2xl flex items-center justify-center">▶</button>
+            </div>
+            <div class="flex gap-2 pointer-events-auto">
+                <button id="btnAttack" class="w-16 h-16 bg-red-600/70 active:bg-red-700/90 rounded-full border-2 border-white/60 text-white text-2xl flex items-center justify-center shadow-lg">🔨</button>
+                <button id="btnJump" class="w-16 h-16 bg-amber-500/70 active:bg-amber-600/90 rounded-full border-2 border-white/60 text-white text-2xl flex items-center justify-center shadow-lg">⬆️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Implementation -->
+    <script>
+        // --- Web Audio Synthesizer ---
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playJump() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(420, this.ctx.currentTime + 0.18);
+                
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.18);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.18);
+            }
+
+            playAttack() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(260, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(70, this.ctx.currentTime + 0.14);
+
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.14);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.14);
+            }
+
+            playHit() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.22);
+
+                gain.gain.setValueAtTime(0.45, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.22);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.22);
+            }
+
+            playFullHeal() {
+                if (this.muted || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                // Full Heal Harpe Arpeggio
+                const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // C5, E5, G5, C6, E6
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+
+                    gain.gain.setValueAtTime(0.3, now + idx * 0.06);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.25);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.06);
+                    osc.stop(now + idx * 0.06 + 0.25);
+                });
+            }
+
+            playHurt() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(40, this.ctx.currentTime + 0.25);
+
+                gain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.25);
+            }
+
+            playGameOver() {
+                if (this.muted || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const notes = [280, 240, 200, 140];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.16);
+
+                    gain.gain.setValueAtTime(0.3, now + idx * 0.16);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.16 + 0.22);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.16);
+                    osc.stop(now + idx * 0.16 + 0.22);
+                });
+            }
+        }
+
+        const sfx = new SoundFX();
+
+        // --- Core Engine Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const GAME_WIDTH = 960;
+        const GAME_HEIGHT = 540;
+        const GROUND_Y = 440;
+
+        let gameRunning = false;
+        let animationFrameId = null;
+        let score = 0;
+        let highScore = parseInt(localStorage.getItem('caveman_highscore') || '0');
+
+        // Input state
+        const keys = {
+            left: false,
+            right: false,
+            up: false,
+            attack: false
+        };
+
+        // Particles & Floating Text Systems
+        let particles = [];
+        let floatingTexts = [];
+
+        class Particle {
+            constructor(x, y, color, size, vx, vy, gravity = 0.15, fade = 0.025, shape = 'circle') {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = size;
+                this.vx = vx;
+                this.vy = vy;
+                this.gravity = gravity;
+                this.alpha = 1;
+                this.fade = fade;
+                this.shape = shape; // 'circle' or 'heart'
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.alpha -= this.fade;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillStyle = this.color;
+
+                if (this.shape === 'heart') {
+                    // Draw mini heart particle
+                    ctx.beginPath();
+                    ctx.translate(this.x, this.y);
+                    const s = this.size * 0.5;
+                    ctx.moveTo(0, 0);
+                    ctx.bezierCurveTo(-s, -s, -s * 2, s / 2, 0, s * 1.5);
+                    ctx.bezierCurveTo(s * 2, s / 2, s, -s, 0, 0);
+                    ctx.fill();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        class FloatingText {
+            constructor(text, x, y, color = '#f59e0b', fontSize = 24) {
+                this.text = text;
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.fontSize = fontSize;
+                this.vy = -1.8;
+                this.alpha = 1;
+            }
+
+            update() {
+                this.y += this.vy;
+                this.alpha -= 0.018;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillStyle = this.color;
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3.5;
+                ctx.font = `bold ${this.fontSize}px 'Jua', sans-serif`;
+                ctx.strokeText(this.text, this.x, this.y);
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+        }
+
+        // --- Detailed Primitive Caveman Class ---
+        class Hero {
+            constructor() {
+                this.width = 68;
+                this.height = 76;
+                this.x = 120;
+                this.y = GROUND_Y - this.height;
+                this.vx = 0;
+                this.vy = 0;
+                
+                // Slowed down hero movement (30% slower)
+                this.speed = 4.2;
+                this.jumpStrength = -13.5;
+                this.gravity = 0.55;
+                this.isGrounded = true;
+
+                // Health System: 6 Hearts Maximum
+                this.maxHp = 6;
+                this.hp = 6;
+
+                // Animation & State
+                this.facingRight = true;
+                this.walkCycle = 0;
+                this.isAttacking = false;
+                this.attackTimer = 0;
+                this.attackDuration = 18; // frames
+                this.invulnerableTimer = 0; // Extended grace period
+            }
+
+            reset() {
+                this.x = 120;
+                this.y = GROUND_Y - this.height;
+                this.vx = 0;
+                this.vy = 0;
+                this.hp = this.maxHp;
+                this.isGrounded = true;
+                this.isAttacking = false;
+                this.invulnerableTimer = 0;
+            }
+
+            fullHeal() {
+                this.hp = this.maxHp;
+                sfx.playFullHeal();
+                floatingTexts.push(new FloatingText('FULL HEAL! ❤️', this.x, this.y - 30, '#4ade80', 28));
+
+                // Spawn lush healing heart particles
+                for (let i = 0; i < 16; i++) {
+                    particles.push(new Particle(
+                        this.x + Math.random() * this.width,
+                        this.y + Math.random() * this.height,
+                        ['#ef4444', '#f43f5e', '#4ade80', '#facc15'][Math.floor(Math.random() * 4)],
+                        Math.random() * 6 + 6,
+                        (Math.random() - 0.5) * 4,
+                        -Math.random() * 3 - 1,
+                        0.05,
+                        0.02,
+                        'heart'
+                    ));
+                }
+            }
+
+            update() {
+                // Horizontal Movement
+                if (keys.left) {
+                    this.vx = -this.speed;
+                    this.facingRight = false;
+                    this.walkCycle += 0.18;
+                } else if (keys.right) {
+                    this.vx = this.speed;
+                    this.facingRight = true;
+                    this.walkCycle += 0.18;
+                } else {
+                    this.vx = 0;
+                    this.walkCycle = 0;
+                }
+
+                // Jump Action
+                if (keys.up && this.isGrounded) {
+                    this.vy = this.jumpStrength;
+                    this.isGrounded = false;
+                    sfx.playJump();
+                    // Dust particles on jump
+                    for (let i = 0; i < 5; i++) {
+                        particles.push(new Particle(
+                            this.x + this.width / 2, 
+                            GROUND_Y, 
+                            '#e5e7eb', 
+                            Math.random() * 3.5 + 2, 
+                            (Math.random() - 0.5) * 3, 
+                            -Math.random() * 1.5
+                        ));
+                    }
+                }
+
+                // Attack Action
+                if (keys.attack && !this.isAttacking) {
+                    this.isAttacking = true;
+                    this.attackTimer = this.attackDuration;
+                    sfx.playAttack();
+                }
+
+                if (this.isAttacking) {
+                    this.attackTimer--;
+                    if (this.attackTimer <= 0) {
+                        this.isAttacking = false;
+                    }
+                }
+
+                // Physics update
+                this.vy += this.gravity;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Ground boundary
+                if (this.y >= GROUND_Y - this.height) {
+                    this.y = GROUND_Y - this.height;
+                    this.vy = 0;
+                    this.isGrounded = true;
+                }
+
+                // Screen edge limits
+                if (this.x < 10) this.x = 10;
+                if (this.x > GAME_WIDTH - this.width - 10) this.x = GAME_WIDTH - this.width - 10;
+
+                // Extended Invulnerability timer
+                if (this.invulnerableTimer > 0) {
+                    this.invulnerableTimer--;
+                }
+            }
+
+            getAttackHitbox() {
+                if (!this.isAttacking) return null;
+                const reach = 60;
+                return {
+                    x: this.facingRight ? this.x + this.width - 10 : this.x - reach + 10,
+                    y: this.y - 10,
+                    width: reach,
+                    height: this.height + 20
+                };
+            }
+
+            draw(ctx) {
+                // Invulnerability blink effect (90 frames)
+                if (this.invulnerableTimer > 0 && Math.floor(this.invulnerableTimer / 5) % 2 === 0) {
+                    return;
+                }
+
+                ctx.save();
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                if (!this.facingRight) {
+                    ctx.scale(-1, 1);
+                }
+
+                const legOffset = Math.sin(this.walkCycle) * 10;
+
+                // --- 1. Primitive Feet (Detailed Toes) ---
+                ctx.fillStyle = '#c2410c';
+                // Left Foot
+                ctx.beginPath();
+                ctx.ellipse(-14 + (this.isGrounded ? legOffset : 4), 28, 9, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Right Foot
+                ctx.beginPath();
+                ctx.ellipse(14 - (this.isGrounded ? legOffset : -4), 28, 9, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // --- 2. Leopard Skin One-Shoulder Tunic ---
+                ctx.fillStyle = '#d97706'; // Warm Amber/Orange Fur
+                ctx.beginPath();
+                ctx.moveTo(-18, -12); // Left Shoulder
+                ctx.lineTo(16, -2);   // Right Strap Down
+                ctx.lineTo(24, 24);   // Right Waist
+                // Jagged bottom edge for wild primitive tunic look
+                ctx.lineTo(16, 26);
+                ctx.lineTo(8, 22);
+                ctx.lineTo(0, 27);
+                ctx.lineTo(-8, 23);
+                ctx.lineTo(-18, 28);
+                ctx.lineTo(-24, 20);
+                ctx.closePath();
+                ctx.fill();
+
+                // Leopard Dark Spots
+                ctx.fillStyle = '#451a03';
+                ctx.beginPath();
+                ctx.arc(-8, 2, 3.5, 0, Math.PI * 2);
+                ctx.arc(8, 12, 3, 0, Math.PI * 2);
+                ctx.arc(-10, 18, 2.5, 0, Math.PI * 2);
+                ctx.arc(6, -1, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Vine Rope Waist Belt & Primitive Tooth Ornament
+                ctx.strokeStyle = '#65a30d';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(-22, 12); ctx.lineTo(22, 14);
+                ctx.stroke();
+
+                // Hanging White Tooth
+                ctx.fillStyle = '#f8fafc';
+                ctx.beginPath();
+                ctx.moveTo(2, 14); ctx.lineTo(6, 22); ctx.lineTo(0, 18);
+                ctx.fill();
+
+                // --- 3. Caveman Head & Skin ---
+                ctx.fillStyle = '#fbbf24'; // Warm tan skin
+                ctx.beginPath();
+                ctx.arc(0, -20, 21, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Wild Stubble / Caveman Mustache
+                ctx.fillStyle = '#582f0e';
+                ctx.beginPath();
+                ctx.arc(2, -10, 10, 0.1, Math.PI - 0.1);
+                ctx.fill();
+
+                // Expressive Caveman Eyes
+                ctx.fillStyle = '#000000';
+                if (this.invulnerableTimer > 0) {
+                    // Shocked/Hurt Expression (X X)
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.moveTo(4, -22); ctx.lineTo(12, -16);
+                    ctx.moveTo(12, -22); ctx.lineTo(4, -16);
+                    ctx.moveTo(-10, -22); ctx.lineTo(-2, -16);
+                    ctx.moveTo(-2, -22); ctx.lineTo(-10, -16);
+                    ctx.stroke();
+                } else {
+                    // Normal Cute Eyes
+                    ctx.beginPath();
+                    ctx.arc(8, -19, 3.8, 0, Math.PI * 2);
+                    ctx.arc(-4, -19, 3.8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Eye Specular Sparkles
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(9.5, -20.5, 1.3, 0, Math.PI * 2);
+                    ctx.arc(-2.5, -20.5, 1.3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Bushy Prehistoric Eyebrows
+                ctx.fillStyle = '#3a1500';
+                ctx.beginPath();
+                ctx.roundRect(4, -27, 10, 4, 2);
+                ctx.roundRect(-8, -27, 10, 4, 2);
+                ctx.fill();
+
+                // Rosy Cheeks
+                ctx.fillStyle = '#f43f5e';
+                ctx.globalAlpha = 0.55;
+                ctx.beginPath();
+                ctx.arc(12, -14, 4, 0, Math.PI * 2);
+                ctx.arc(-8, -14, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+
+                // --- 4. Bushy Messy Hair & Bone Clip ---
+                ctx.fillStyle = '#3a1500';
+                ctx.beginPath();
+                // Overlapping messy hair tufts
+                ctx.arc(-6, -30, 15, 0, Math.PI * 2);
+                ctx.arc(8, -30, 14, 0, Math.PI * 2);
+                ctx.arc(-16, -22, 11, 0, Math.PI * 2);
+                ctx.arc(16, -22, 9, 0, Math.PI * 2);
+                ctx.arc(0, -36, 12, 0, Math.PI * 2);
+                ctx.fill();
+
+                // White Bone Hair Accessory
+                ctx.fillStyle = '#f8fafc';
+                ctx.beginPath();
+                ctx.ellipse(-2, -36, 12, 4.5, -0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(-13, -37, 4.5, 0, Math.PI * 2);
+                ctx.arc(9, -35, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // --- 5. Detailed Primitive Stone Hammer ---
+                ctx.save();
+                ctx.translate(12, 2);
+
+                let hammerAngle = 0.25;
+                if (this.isAttacking) {
+                    const progress = (this.attackDuration - this.attackTimer) / this.attackDuration;
+                    hammerAngle = -0.9 + Math.sin(progress * Math.PI) * 2.3;
+                }
+
+                ctx.rotate(hammerAngle);
+
+                // Rugged Wooden Branch Handle
+                ctx.fillStyle = '#78350f';
+                ctx.fillRect(-5, -28, 9, 40);
+
+                // Large Rough Chiseled Stone Block
+                ctx.fillStyle = '#64748b';
+                ctx.beginPath();
+                ctx.roundRect(-22, -48, 44, 28, 6);
+                ctx.fill();
+
+                // Stone Edge Highlights & Cracks
+                ctx.strokeStyle = '#334155';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(-14, -42); ctx.lineTo(12, -38);
+                ctx.moveTo(-8, -28); ctx.lineTo(14, -30);
+                ctx.stroke();
+
+                // Green Vine Tied Around Stone (Rope Wrapping)
+                ctx.strokeStyle = '#65a30d';
+                ctx.lineWidth = 3.5;
+                ctx.beginPath();
+                ctx.moveTo(-12, -44); ctx.lineTo(12, -26);
+                ctx.moveTo(12, -44); ctx.lineTo(-12, -26);
+                ctx.stroke();
+
+                ctx.restore();
+
+                // Swing Motion Air Arc Effect
+                if (this.isAttacking) {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.lineWidth = 7;
+                    ctx.beginPath();
+                    ctx.arc(15, -8, 55, -Math.PI * 0.45, Math.PI * 0.35);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // --- Ground-Only Monsters (Slower Speed) ---
+        class Monster {
+            constructor(type, x) {
+                this.type = type; // 'dino', 'mammoth', 'boar'
+                this.x = x;
+                this.markedForDeletion = false;
+                
+                // 35% Slower movement speed
+                this.vx = -Math.random() * 0.8 - 1.4;
+                this.animFrame = 0;
+
+                if (type === 'dino') {
+                    this.width = 54;
+                    this.height = 50;
+                    this.y = GROUND_Y - this.height;
+                } else if (type === 'mammoth') {
+                    this.width = 68;
+                    this.height = 58;
+                    this.y = GROUND_Y - this.height;
+                } else if (type === 'boar') {
+                    this.width = 52;
+                    this.height = 42;
+                    this.y = GROUND_Y - this.height;
+                }
+            }
+
+            update(scrollSpeed) {
+                this.x += this.vx - scrollSpeed;
+                this.animFrame += 0.12;
+
+                if (this.x < -120) {
+                    this.markedForDeletion = true;
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+
+                if (this.type === 'dino') {
+                    // Cute Green Baby Dino
+                    const legMove = Math.sin(this.animFrame * 2) * 5;
+
+                    // Feet
+                    ctx.fillStyle = '#047857';
+                    ctx.fillRect(-14 + legMove, 12, 8, 13);
+                    ctx.fillRect(6 - legMove, 12, 8, 13);
+
+                    // Body
+                    ctx.fillStyle = '#10b981';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 2, 22, 17, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Head
+                    ctx.beginPath();
+                    ctx.arc(-14, -8, 14, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Big Cute Eye
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(-18, -10, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.arc(-19.5, -10, 2.3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Yellow Back Spikes
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -15); ctx.lineTo(6, -24); ctx.lineTo(12, -13);
+                    ctx.moveTo(-10, -13); ctx.lineTo(-4, -22); ctx.lineTo(2, -12);
+                    ctx.fill();
+
+                } else if (this.type === 'mammoth') {
+                    // Mini Fuzzy Mammoth
+                    const legMove = Math.sin(this.animFrame * 2) * 4;
+
+                    // Legs
+                    ctx.fillStyle = '#78350f';
+                    ctx.fillRect(-22 + legMove, 14, 10, 15);
+                    ctx.fillRect(10 - legMove, 14, 10, 15);
+
+                    // Furry Body
+                    ctx.fillStyle = '#b45309';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 28, 22, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Ivory Tusks
+                    ctx.strokeStyle = '#f8fafc';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.arc(-22, 8, 13, 0.2, Math.PI * 0.65);
+                    ctx.stroke();
+
+                    // Trunk
+                    ctx.strokeStyle = '#b45309';
+                    ctx.lineWidth = 6.5;
+                    ctx.beginPath();
+                    ctx.arc(-26, 6, 10, 0, Math.PI * 0.75);
+                    ctx.stroke();
+
+                    // Cute Eye
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.arc(-14, -5, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                } else if (this.type === 'boar') {
+                    // Wild Prehistoric Boar
+                    const legMove = Math.sin(this.animFrame * 2.5) * 5;
+
+                    // Legs
+                    ctx.fillStyle = '#582f0e';
+                    ctx.fillRect(-16 + legMove, 10, 7, 11);
+                    ctx.fillRect(8 - legMove, 10, 7, 11);
+
+                    // Body
+                    ctx.fillStyle = '#7f5539';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 22, 15, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Sharp Tusk
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.moveTo(-16, 4); ctx.lineTo(-24, -2); ctx.lineTo(-18, 8);
+                    ctx.fill();
+
+                    // Snout
+                    ctx.fillStyle = '#9c6644';
+                    ctx.beginPath();
+                    ctx.arc(-18, 2, 7, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Eye
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.arc(-12, -4, 2.8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // --- Ground-Only Obstacles ---
+        class Obstacle {
+            constructor(x) {
+                this.x = x;
+                this.types = ['rock', 'bush', 'log'];
+                this.type = this.types[Math.floor(Math.random() * this.types.length)];
+                this.markedForDeletion = false;
+
+                if (this.type === 'rock') {
+                    this.width = 46;
+                    this.height = 38;
+                } else if (this.type === 'bush') {
+                    this.width = 52;
+                    this.height = 42;
+                } else { // log
+                    this.width = 58;
+                    this.height = 34;
+                }
+
+                this.y = GROUND_Y - this.height;
+            }
+
+            update(scrollSpeed) {
+                this.x -= scrollSpeed;
+                if (this.x < -100) {
+                    this.markedForDeletion = true;
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                if (this.type === 'rock') {
+                    // Prehistoric Boulder
+                    ctx.fillStyle = '#64748b';
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y + this.height);
+                    ctx.lineTo(this.x + 8, this.y + 12);
+                    ctx.lineTo(this.x + 24, this.y);
+                    ctx.lineTo(this.x + this.width, this.y + this.height);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.fillStyle = '#475569';
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 24, this.y);
+                    ctx.lineTo(this.x + this.width, this.y + this.height);
+                    ctx.lineTo(this.x + 18, this.y + this.height);
+                    ctx.fill();
+
+                } else if (this.type === 'bush') {
+                    // Thorn Bush
+                    ctx.fillStyle = '#15803d';
+                    ctx.beginPath();
+                    ctx.arc(this.x + 16, this.y + 22, 16, 0, Math.PI * 2);
+                    ctx.arc(this.x + 36, this.y + 22, 16, 0, Math.PI * 2);
+                    ctx.arc(this.x + 26, this.y + 16, 18, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Wooden Spikes
+                    ctx.fillStyle = '#78350f';
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + 10, this.y + 14); ctx.lineTo(this.x + 4, this.y + 4); ctx.lineTo(this.x + 16, me => this.y + 16);
+                    ctx.moveTo(this.x + 36, this.y + 16); ctx.lineTo(this.x + 44, this.y + 6); ctx.lineTo(this.x + 40, this.y + 22);
+                    ctx.fill();
+
+                } else {
+                    // Log
+                    ctx.fillStyle = '#78350f';
+                    ctx.beginPath();
+                    ctx.roundRect(this.x, this.y + 6, this.width, this.height - 6, 7);
+                    ctx.fill();
+
+                    // Ring texture
+                    ctx.fillStyle = '#a16207';
+                    ctx.beginPath();
+                    ctx.ellipse(this.x + 6, this.y + 20, 5, 10, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        // --- Bonus Full-Heal Fruit Class ---
+        class FruitItem {
+            constructor(x) {
+                this.x = x;
+                this.types = ['apple', 'pineapple', 'banana', 'watermelon'];
+                this.type = this.types[Math.floor(Math.random() * this.types.length)];
+                this.width = 38;
+                this.height = 38;
+                // Easy ground/jump level height
+                this.y = GROUND_Y - 90 - Math.random() * 40;
+                this.markedForDeletion = false;
+                this.floatTimer = Math.random() * 10;
+            }
+
+            update(scrollSpeed) {
+                this.x -= scrollSpeed;
+                this.floatTimer += 0.06;
+                if (this.x < -80) {
+                    this.markedForDeletion = true;
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                const floatY = this.y + Math.sin(this.floatTimer) * 5;
+                ctx.translate(this.x + this.width / 2, floatY + this.height / 2);
+
+                // Golden/Green Heal Aura Glow
+                ctx.fillStyle = 'rgba(74, 222, 128, 0.35)';
+                ctx.beginPath();
+                ctx.arc(0, 0, 24, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (this.type === 'apple') {
+                    // Red Apple
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.arc(-4, 0, 12, 0, Math.PI * 2);
+                    ctx.arc(4, 0, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#15803d';
+                    ctx.fillRect(-2, -16, 4, 6);
+
+                } else if (this.type === 'pineapple') {
+                    // Pineapple
+                    ctx.fillStyle = '#eab308';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 2, 12, 15, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#22c55e';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -12); ctx.lineTo(-7, -22); ctx.lineTo(0, -25); ctx.lineTo(7, -22);
+                    ctx.closePath();
+                    ctx.fill();
+
+                } else if (this.type === 'banana') {
+                    // Yellow Banana Bunch
+                    ctx.fillStyle = '#facc15';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 14, 0.4, Math.PI * 0.9);
+                    ctx.lineWidth = 7;
+                    ctx.strokeStyle = '#facc15';
+                    ctx.stroke();
+
+                } else {
+                    // Watermelon Slice
+                    ctx.fillStyle = '#15803d';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 16, 0, Math.PI);
+                    ctx.fill();
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 13, 0, Math.PI);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // --- Game Instance Management ---
+        let hero = new Hero();
+        let monsters = [];
+        let obstacles = [];
+        let fruits = [];
+
+        let bgOffset = 0;
+        let globalSpawnCooldown = 0;
+
+        // --- Parallax Background Renderer ---
+        function drawBackground() {
+            // Pastel Sky
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+            skyGradient.addColorStop(0, '#bae6fd');
+            skyGradient.addColorStop(0.65, '#fef3c7');
+            skyGradient.addColorStop(1, '#fde68a');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+            // Clouds (Slow Parallax)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+            const cloudOffset = (bgOffset * 0.15) % GAME_WIDTH;
+            for (let i = -1; i < 2; i++) {
+                const cx = i * GAME_WIDTH - cloudOffset;
+                ctx.beginPath();
+                ctx.arc(cx + 150, 80, 28, 0, Math.PI * 2);
+                ctx.arc(cx + 185, 70, 38, 0, Math.PI * 2);
+                ctx.arc(cx + 225, 80, 28, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Distant Mountains & Volcano (Medium Parallax)
+            const mountainOffset = (bgOffset * 0.35) % GAME_WIDTH;
+            for (let i = -1; i < 2; i++) {
+                const mx = i * GAME_WIDTH - mountainOffset;
+                
+                // Volcano
+                ctx.fillStyle = '#94a3b8';
+                ctx.beginPath();
+                ctx.moveTo(mx + 120, GROUND_Y);
+                ctx.lineTo(mx + 250, 210);
+                ctx.lineTo(mx + 290, 210);
+                ctx.lineTo(mx + 420, GROUND_Y);
+                ctx.closePath();
+                ctx.fill();
+
+                // Lava Cap
+                ctx.fillStyle = '#f87171';
+                ctx.beginPath();
+                ctx.ellipse(mx + 270, 210, 20, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Prehistoric Palm Trees (Faster Parallax)
+            const treeOffset = (bgOffset * 0.6) % GAME_WIDTH;
+            for (let i = -1; i < 2; i++) {
+                const tx = i * GAME_WIDTH - treeOffset;
+                ctx.fillStyle = '#78350f';
+                ctx.fillRect(tx + 320, GROUND_Y - 130, 16, 130);
+
+                ctx.fillStyle = '#16a34a';
+                ctx.beginPath();
+                ctx.ellipse(tx + 328, GROUND_Y - 130, 42, 14, -0.4, 0, Math.PI * 2);
+                ctx.ellipse(tx + 328, GROUND_Y - 130, 42, 14, 0.4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Ground Floor
+            ctx.fillStyle = '#fbbf24';
+            ctx.fillRect(0, GROUND_Y, GAME_WIDTH, GAME_HEIGHT - GROUND_Y);
+
+            // Grass Line
+            ctx.fillStyle = '#84cc16';
+            ctx.fillRect(0, GROUND_Y, GAME_WIDTH, 12);
+        }
+
+        // --- Collision Helper ---
+        function checkAABBCollision(rect1, rect2) {
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+
+        // --- Ground-Only Spawner (Well Spaced, No Clustering) ---
+        function handleSpawns() {
+            globalSpawnCooldown--;
+
+            // Ensure ample distance between spawns so nothing overlaps
+            if (globalSpawnCooldown <= 0) {
+                const roll = Math.random();
+
+                if (roll < 0.45) {
+                    // Spawn Monster
+                    const types = ['dino', 'mammoth', 'boar'];
+                    const selected = types[Math.floor(Math.random() * types.length)];
+                    monsters.push(new Monster(selected, GAME_WIDTH + 60));
+                    globalSpawnCooldown = 180 + Math.random() * 90; // ~3-4.5 sec gap
+
+                } else if (roll < 0.8) {
+                    // Spawn Obstacle
+                    obstacles.push(new Obstacle(GAME_WIDTH + 60));
+                    globalSpawnCooldown = 170 + Math.random() * 80;
+
+                } else {
+                    // Spawn Full Heal Fruit
+                    fruits.push(new FruitItem(GAME_WIDTH + 60));
+                    globalSpawnCooldown = 200 + Math.random() * 100;
+                }
+            }
+        }
+
+        // --- HUD Update ---
+        function updateHUD() {
+            document.getElementById('scoreDisplay').innerText = score.toString().padStart(4, '0');
+            document.getElementById('highScoreDisplay').innerText = `BEST: ${highScore}`;
+
+            // Render 6 Hearts
+            const heartsContainer = document.getElementById('heartsContainer');
+            let heartsHTML = '';
+            for (let i = 0; i < hero.maxHp; i++) {
+                if (i < hero.hp) {
+                    heartsHTML += '<span class="drop-shadow">❤️</span>';
+                } else {
+                    heartsHTML += '<span class="opacity-25 grayscale">🖤</span>';
+                }
+            }
+            heartsContainer.innerHTML = heartsHTML;
+        }
+
+        // --- Main Game Loop ---
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            // Slower background scroll speed (~1.8 px per frame)
+            const currentScrollSpeed = (keys.right ? hero.speed * 0.6 : 1.8);
+            bgOffset += currentScrollSpeed;
+
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+            // 1. Render Background
+            drawBackground();
+
+            // 2. Handle Spawns
+            handleSpawns();
+
+            // 3. Update & Render Hero
+            hero.update();
+            hero.draw(ctx);
+
+            const attackHitbox = hero.getAttackHitbox();
+
+            // 4. Update & Render Monsters
+            monsters.forEach((monster) => {
+                monster.update(currentScrollSpeed * 0.2);
+                monster.draw(ctx);
+
+                // Hammer Attack Hits Monster
+                if (attackHitbox && checkAABBCollision(attackHitbox, monster)) {
+                    monster.markedForDeletion = true;
+                    sfx.playHit();
+
+                    score += 10;
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('caveman_highscore', highScore.toString());
+                    }
+
+                    floatingTexts.push(new FloatingText('+10', monster.x + monster.width / 2, monster.y, '#facc15', 28));
+
+                    // Burst particles
+                    for (let i = 0; i < 10; i++) {
+                        particles.push(new Particle(
+                            monster.x + monster.width / 2,
+                            monster.y + monster.height / 2,
+                            '#f59e0b',
+                            Math.random() * 5 + 3,
+                            (Math.random() - 0.5) * 8,
+                            (Math.random() - 0.5) * 8 - 2
+                        ));
+                    }
+                }
+
+                // Monster Hits Hero
+                if (!monster.markedForDeletion && hero.invulnerableTimer === 0 && checkAABBCollision(hero, monster)) {
+                    hero.hp--;
+                    hero.invulnerableTimer = 90; // Long grace period (~1.5 sec)
+                    sfx.playHurt();
+
+                    floatingTexts.push(new FloatingText('으악! ❤️-1', hero.x, hero.y - 20, '#ef4444', 24));
+
+                    if (hero.hp <= 0) {
+                        triggerGameOver();
+                    }
+                }
+            });
+
+            // 5. Update & Render Obstacles
+            obstacles.forEach((obs) => {
+                obs.update(currentScrollSpeed);
+                obs.draw(ctx);
+
+                if (hero.invulnerableTimer === 0 && checkAABBCollision(hero, obs)) {
+                    hero.hp--;
+                    hero.invulnerableTimer = 90;
+                    sfx.playHurt();
+
+                    floatingTexts.push(new FloatingText('아야! ❤️-1', hero.x, hero.y - 20, '#ef4444', 24));
+
+                    if (hero.hp <= 0) {
+                        triggerGameOver();
+                    }
+                }
+            });
+
+            // 6. Update & Render Fruits (100% Full Heal)
+            fruits.forEach((fruit) => {
+                fruit.update(currentScrollSpeed);
+                fruit.draw(ctx);
+
+                if (checkAABBCollision(hero, fruit)) {
+                    fruit.markedForDeletion = true;
+                    hero.fullHeal(); // 100% HP Restoration
+                }
+            });
+
+            // 7. Cleanup & Particles
+            monsters = monsters.filter(m => !m.markedForDeletion);
+            obstacles = obstacles.filter(o => !o.markedForDeletion);
+            fruits = fruits.filter(f => !f.markedForDeletion);
+
+            particles.forEach((p) => { p.update(); p.draw(ctx); });
+            particles = particles.filter(p => p.alpha > 0);
+
+            floatingTexts.forEach((ft) => { ft.update(); ft.draw(ctx); });
+            floatingTexts = floatingTexts.filter(ft => ft.alpha > 0);
+
+            updateHUD();
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- Event Listeners ---
+        function setupEventListeners() {
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+                if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+                if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;
+                if (e.code === 'Space' || e.code === 'KeyZ') keys.attack = true;
+                if (e.code === 'Escape' && gameRunning) quitToMainMenu();
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+                if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+                if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = false;
+                if (e.code === 'Space' || e.code === 'KeyZ') keys.attack = false;
+            });
+
+            const bindTouchBtn = (elementId, keyProp) => {
+                const btn = document.getElementById(elementId);
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    sfx.init();
+                    keys[keyProp] = true;
+                });
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    keys[keyProp] = false;
+                });
+                btn.addEventListener('mousedown', () => { keys[keyProp] = true; });
+                btn.addEventListener('mouseup', () => { keys[keyProp] = false; });
+            };
+
+            bindTouchBtn('btnLeft', 'left');
+            bindTouchBtn('btnRight', 'right');
+            bindTouchBtn('btnJump', 'up');
+            bindTouchBtn('btnAttack', 'attack');
+
+            document.getElementById('startBtn').addEventListener('click', startGame);
+            document.getElementById('restartBtn').addEventListener('click', startGame);
+            document.getElementById('quitBtn').addEventListener('click', quitToMainMenu);
+
+            document.getElementById('muteBtn').addEventListener('click', () => {
+                sfx.muted = !sfx.muted;
+                document.getElementById('muteIcon').innerText = sfx.muted ? '🔇' : '🔊';
+                document.getElementById('muteText').innerText = sfx.muted ? '소리 켜짐' : '음소거';
+            });
+        }
+
+        // --- Game Flow ---
+        function quitToMainMenu() {
+            gameRunning = false;
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('hidden');
+            drawBackground();
+        }
+
+        function startGame() {
+            sfx.init();
+
+            score = 0;
+            monsters = [];
+            obstacles = [];
+            fruits = [];
+            particles = [];
+            floatingTexts = [];
+            globalSpawnCooldown = 60;
+
+            hero.reset();
+
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+
+            gameRunning = true;
+
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            gameLoop();
+        }
+
+        function triggerGameOver() {
+            gameRunning = false;
+            sfx.playGameOver();
+
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('finalHighScore').innerText = highScore;
+
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+
+        window.onload = () => {
+            setupEventListeners();
+            drawBackground();
+        };
+    </script>
+</body>
+</html>
